@@ -1,18 +1,28 @@
 # nexus-core-oss
 
-Build, deploy, and run [Nexus Repository Core OSS](https://github.com/sonatype/nexus-public) from source on Linux, painlessly.
+Build, deploy, and run Nexus Repository Core OSS from source, painlessly.
 
-Sonatype's official binary distributions of Nexus Repository OSS have been discontinued / are feature-crippled compared to what the `nexus-public` source actually supports. This project builds Core OSS directly from the public `nexus-public` export and deploys it using the same "unix archive" layout convention as Sonatype's official distributions, so nothing downstream needs to know or care that it wasn't built by Sonatype.
+Sonatype no longer publishes binary distributions of the plain open-source edition of [Nexus Repository](https://github.com/sonatype/nexus-public) 3 — every binary download is now Community Edition, gated behind free registration and subject to usage limits (as of this writing, 40,000 stored components / 100,000 requests per day; see [Sonatype's Usage Center docs](https://help.sonatype.com/en/usage-center.html)). Credit where due, though: Sonatype has kept the underlying core — Nexus Repository Core, the `nexus-public` GitHub repo — genuinely open source (EPL-1.0) and still under active development, receiving the same code changes as every Community Edition/Pro release. They just stopped handing out a ready-to-run binary of it. This project exists to close that one gap: it builds Core OSS directly from that source and deploys it using the same "unix archive" layout convention as Sonatype's official distributions, so nothing downstream needs to know or care that it wasn't built by Sonatype — and nothing built this way is subject to Community Edition's usage limits, since those are a property of the binary distribution, not the open-source code.
+
+**What Core OSS actually is, compared to Community/Pro:** the open-source build supports exactly three repository formats — **Maven, apt, and raw** — plus an embedded H2 datastore (or the bundled MyBatis/SQL datastore) and S3 blob storage. Nothing else. Community Edition and Pro add many more formats (npm, Docker/OCI, NuGet, PyPI, Go, Conda, RubyGems, Helm, and others), plus features like clustering/HA (Pro only) that live outside the `nexus-public` source tree entirely. If your use case needs one of those formats, this project won't get you there — Core OSS genuinely can't do it, not a limitation of this build recipe. If Maven (optionally alongside apt/raw) is all you need, Core OSS built from source is a fully-capable, unrestricted Nexus Repository.
 
 Every script here is heavily commented with the specific build/runtime quirks it works around and when/how they were confirmed — read the scripts themselves for details beyond this overview.
 
 ## Requirements
 
-- Debian/Ubuntu-family Linux with `systemd` (the init script uses `systemd-run` for process isolation and `adduser`/`pgrep` in the Debian style). Adapting to other init systems or distros should be straightforward — the actual build (`bin/build.sh`) has no such dependency.
-- `git`, `curl`, `python3` on `PATH`.
-- Root access for install/upgrade/service-management steps. `bin/build.sh` itself and `bin/upgrade.sh --dry-run` need no privileges.
+Building and deploying have quite different requirements — only the deploy/service-management layer is tied to a specific OS family.
 
-`bin/build.sh` bootstraps its own JDK 25, Maven 3.9, and Node.js/corepack into hidden directories alongside the source checkout — it does not require (or touch) any JDK/Maven/Node already on your system.
+### Build requirements (`bin/build.sh`, `bin/latest-tag.sh`)
+
+Portable POSIX shell with no distro-specific assumptions: `git`, `curl`, `python3`, `tar`, and any POSIX `/bin/sh` on `PATH`. No root required. `bin/build.sh` bootstraps its own JDK 25, Maven 3.9, and Node.js/corepack into hidden directories alongside the `nexus-public` checkout — it does not require (or touch) any JDK/Maven/Node already on your system.
+
+The one caveat: those automatic downloads (Temurin JDK, Node.js) currently target **Linux x86_64** specifically (hardcoded URLs). On another OS or architecture, the build itself will still work — the Maven/Node tooling involved is all cross-platform — but you'll need to seed the toolchain yourself first: install a matching JDK 25+, Maven 3.9+, and Node.js+corepack for your platform at `$NEXUS_PUBLIC_DIR/.build-jdk`, `.build-maven`, and `.build-node` respectively (default `$NEXUS_PUBLIC_DIR` is `/opt/nexus-public`). `build.sh` only checks that those directories already contain a working, correctly-versioned toolchain — it doesn't care how they got there, so a pre-seeded directory is used as-is and the download step is skipped entirely. Patches to teach `build.sh` to detect OS/arch and fetch the right archive automatically are welcome.
+
+### Deploy requirements (`setup.sh`, `init.d/nexus`, `bin/upgrade.sh`, `bin/restart.sh`)
+
+Debian/Ubuntu-family Linux with `systemd`: `setup.sh` uses `adduser` in the Debian style, and `init.d/nexus` uses `systemd-run` for process isolation and `pgrep -u` for process matching. Root access is required (`bin/upgrade.sh --dry-run` is the exception — it builds and reports what *would* happen without touching anything live, so it needs no privileges).
+
+Adapting the deploy layer to other init systems or distros should be straightforward — it's a small, self-contained script (`init.d/nexus`) plus a few lines in `setup.sh`, none of which touches the build itself. Contributions for other targets (e.g. a native systemd unit, or an RHEL/openrc equivalent) are welcome.
 
 ## Quickstart
 
