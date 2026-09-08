@@ -1,24 +1,32 @@
 # nexus-core-oss
 
-Build, deploy, and run Nexus Repository Core OSS from source, painlessly.
+Build, deploy, and run Nexus Repository Core OSS from source!
 
-Sonatype no longer publishes binary distributions of the plain open-source edition of [Nexus Repository](https://github.com/sonatype/nexus-public) 3 — every binary download is now Community Edition, gated behind free registration and subject to usage limits (as of this writing, 40,000 stored components / 100,000 requests per day; see [Sonatype's Usage Center docs](https://help.sonatype.com/en/usage-center.html)). Credit where due, though: Sonatype has kept the underlying core — Nexus Repository Core, the `nexus-public` GitHub repo — genuinely open source (EPL-1.0) and still under active development, receiving the same code changes as every Community Edition/Pro release. They just stopped handing out a ready-to-run binary of it. This project exists to close that one gap: it builds Core OSS directly from that source and deploys it using the same "unix archive" layout convention as Sonatype's official distributions, so nothing downstream needs to know or care that it wasn't built by Sonatype — and nothing built this way is subject to Community Edition's usage limits, since those are a property of the binary distribution, not the open-source code.
+## Why?
 
-**What Core OSS actually is, compared to Community/Pro:** the open-source build supports exactly three repository formats — **Maven, apt, and raw** — plus an embedded H2 datastore (or the bundled MyBatis/SQL datastore) and S3 blob storage. Nothing else. Community Edition and Pro add many more formats (npm, Docker/OCI, NuGet, PyPI, Go, Conda, RubyGems, Helm, and others), plus features like clustering/HA (Pro only) that live outside the `nexus-public` source tree entirely. If your use case needs one of those formats, this project won't get you there — Core OSS genuinely can't do it, not a limitation of this build recipe. If Maven (optionally alongside apt/raw) is all you need, Core OSS built from source is a fully-capable, unrestricted Nexus Repository.
+As of version 3, Sonatype no longer publishes binary distributions of the plain open-source edition of [Nexus Repository](https://github.com/sonatype/nexus-public) — pre-built binary downloads are a so-called "Community" edition of Nexus 3, which is crippleware subject to usage limits (as of this writing, 40,000 stored components total and 100,000 requests per day; see [Sonatype's Usage Center docs](https://help.sonatype.com/en/usage-center.html)). These limits have been disruptive and frustrating for the Nexus community: see for example [sonatype/nexus-public#883](https://github.com/sonatype/nexus-public/issues/883), as well as [this blog post detailing the issue](https://ctrue.name/2026/04/21/the-fall-of-sonatype-nexus.html).
 
-Every script here is heavily commented with the specific build/runtime quirks it works around and when/how they were confirmed — read the scripts themselves for details beyond this overview.
+Still, Sonatype continues to release the core of Nexus 3 as open source (EPL-1.0), for which we are grateful! As of this writing (fall 2026), Nexus Core remains synced with every Community/Pro release — it's just that Core has no official ready-to-run binaries. This project exists to deal with that: it builds Nexus Core from source and deploys it using the same "unix archive" layout convention as Sonatype's official distributions.
+
+Core differs from Community/Pro in that the open-source build supports only three repository formats — **Maven, apt, and raw** — with an embedded H2 datastore (or the bundled MyBatis/SQL datastore) and S3 blob storage. Community Edition and Pro add many more formats — npm, Docker/OCI, NuGet, PyPI, Go, Conda, RubyGems, Helm, and others — plus features like clustering/HA (Pro only) that live outside the `nexus-public` source tree entirely. If your use case needs one of those formats, this project won't get you there. But if Maven is all you need, Core built from source is a fully-capable, unrestricted Nexus Repository.
+
+Every script here is heavily commented with the specific build/runtime quirks it works around, and when/how they were confirmed — read the scripts themselves for details beyond this overview.
 
 ## Requirements
 
 Building and deploying have quite different requirements — only the deploy/service-management layer is tied to a specific OS family.
 
-### Build requirements (`bin/build.sh`, `bin/latest-tag.sh`)
+### Build requirements
+
+Relevant files: `bin/build.sh`, `bin/latest-tag.sh`
 
 Portable POSIX shell with no distro-specific assumptions: `git`, `curl`, `python3`, `tar`, and any POSIX `/bin/sh` on `PATH`. No root required. `bin/build.sh` bootstraps its own JDK 25, Maven 3.9, and Node.js/corepack into hidden directories alongside the `nexus-public` checkout — it does not require (or touch) any JDK/Maven/Node already on your system.
 
-The one caveat: those automatic downloads (Temurin JDK, Node.js) currently target **Linux x86_64** specifically (hardcoded URLs). On another OS or architecture, the build itself will still work — the Maven/Node tooling involved is all cross-platform — but you'll need to seed the toolchain yourself first: install a matching JDK 25+, Maven 3.9+, and Node.js+corepack for your platform at `$NEXUS_PUBLIC_DIR/.build-jdk`, `.build-maven`, and `.build-node` respectively (default `$NEXUS_PUBLIC_DIR` is `/opt/nexus-public`). `build.sh` only checks that those directories already contain a working, correctly-versioned toolchain — it doesn't care how they got there, so a pre-seeded directory is used as-is and the download step is skipped entirely. Patches to teach `build.sh` to detect OS/arch and fetch the right archive automatically are welcome.
+One caveat: those automatic downloads (Temurin JDK, Node.js) currently target **Linux x86_64** specifically (hardcoded URLs). On another OS or architecture, the build itself will still work — the Maven/Node tooling involved is all cross-platform — but you'll need to seed the toolchain yourself first: install a matching JDK 25+, Maven 3.9+, and Node.js+corepack for your platform at `$NEXUS_PUBLIC_DIR/.build-jdk`, `.build-maven`, and `.build-node` respectively (default `$NEXUS_PUBLIC_DIR` is `/opt/nexus-public`). `build.sh` only checks that those directories already contain a working, correctly-versioned toolchain — it doesn't care how they got there, so a pre-seeded directory is used as-is and the download step is skipped entirely. Patches to teach `build.sh` to detect OS/arch and fetch the right archive automatically are welcome.
 
-### Deploy requirements (`setup.sh`, `init.d/nexus`, `bin/upgrade.sh`, `bin/restart.sh`)
+### Deploy requirements
+
+Relevant files: `setup.sh`, `init.d/nexus`, `bin/upgrade.sh`, `bin/restart.sh`
 
 Debian/Ubuntu-family Linux with `systemd`: `setup.sh` uses `adduser` in the Debian style, and `init.d/nexus` uses `systemd-run` for process isolation and `pgrep -u` for process matching. Root access is required (`bin/upgrade.sh --dry-run` is the exception — it builds and reports what *would* happen without touching anything live, so it needs no privileges).
 
@@ -55,13 +63,13 @@ To just build without deploying anything (e.g. to test the recipe still works ag
 
 ## Service management
 
-`init.d/nexus` implements its own start/stop/status logic rather than trusting Nexus Core OSS's own launcher (which has no real service-control support beyond running in the foreground — see the script's comments) or a pidfile. Ubuntu's systemd compatibility generator means `systemctl start|stop|status nexus` also works once the symlink is in place, but there is no native `nexus.service` unit and thus no restart-on-crash policy.
+`init.d/nexus` implements its own start/stop/status logic rather than trusting Nexus Core's own launcher (which has no real service-control support beyond running in the foreground — see the script's comments) or a pidfile. Ubuntu's systemd compatibility generator means `systemctl start|stop|status nexus` also works once the symlink is in place, but there is no native `nexus.service` unit and thus no restart-on-crash policy.
 
 **Always go through `/etc/init.d/nexus`** (or `bin/restart.sh`, suitable for a cron-driven periodic restart) — never invoke `/opt/nexus3/bin/nexus start`/`stop` directly. An overlapping start can leave two Nexus processes fighting over the same embedded database and blob store. After starting or stopping, verify actual process state with `pgrep -af nexus-repository` (exactly one process after start, none after stop).
 
 ### Configuration
 
-Machine-specific settings (JDK location, heap size, install paths) belong in `/etc/default/nexus`, sourced by `init.d/nexus` if present — never edit `init.d/nexus` directly, since `setup.sh` re-symlinks it from this checkout on every run. Recognized variables, all optional:
+Machine-specific settings (JDK location, heap size, install paths) belong in `/etc/default/nexus`, sourced by `init.d/nexus` if present — no need to edit `init.d/nexus` directly. Recognized variables, all optional:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -116,4 +124,4 @@ Include the `nexus-secrets.json` file in secure backups, mode `0600`. A restored
 
 ## License
 
-Public domain — see [LICENSE](LICENSE) (Unlicense).
+Public domain — see [UNLICENSE](UNLICENSE) (Unlicense).
