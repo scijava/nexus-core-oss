@@ -12,6 +12,12 @@ Core differs from Community/Pro in that the open-source build supports only thre
 
 Every script here is heavily commented with the specific build/runtime quirks it works around, and when/how they were confirmed — read the scripts themselves for details beyond this overview.
 
+## License
+
+The content of this repository is dedicated to the public domain — see [UNLICENSE](UNLICENSE).
+
+**Trademark Notice:** Sonatype, Nexus, and Nexus Repository are trademarks of Sonatype, Inc. This repository is an independent open source project and is not affiliated with, endorsed by, sponsored by, or connected to Sonatype, Inc.
+
 ## Requirements
 
 Building and deploying have quite different requirements — only the deploy/service-management layer is tied to a specific OS family.
@@ -121,7 +127,3 @@ Nexus warns under **Status → Support** when stored secrets use its default enc
 4. Start Nexus (`/etc/init.d/nexus start`) and confirm under **Status → Support → System Status Checks** that **Default Secret Encryption Key** reports healthy.
 
 Include the `nexus-secrets.json` file in secure backups, mode `0600`. A restored Nexus database containing encrypted secrets requires this same key file.
-
-## License
-
-Public domain — see [UNLICENSE](UNLICENSE) (Unlicense).
