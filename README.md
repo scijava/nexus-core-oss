@@ -26,11 +26,11 @@ One caveat: those automatic downloads (Temurin JDK, Node.js) currently target **
 
 ### Deploy requirements
 
-Relevant files: `setup.sh`, `init.d/nexus`, `bin/upgrade.sh`, `bin/restart.sh`
+Relevant files: `setup.sh`, `service/sysv/nexus`, `bin/upgrade.sh`, `bin/restart.sh`
 
-Debian/Ubuntu-family Linux with `systemd`: `setup.sh` uses `adduser` in the Debian style, and `init.d/nexus` uses `systemd-run` for process isolation and `pgrep -u` for process matching. Root access is required (`bin/upgrade.sh --dry-run` is the exception — it builds and reports what *would* happen without touching anything live, so it needs no privileges).
+Debian/Ubuntu-family Linux with `systemd`: `setup.sh` uses `adduser` in the Debian style, and `service/sysv/nexus` uses `systemd-run` for process isolation and `pgrep -u` for process matching. Root access is required (`bin/upgrade.sh --dry-run` is the exception — it builds and reports what *would* happen without touching anything live, so it needs no privileges).
 
-Adapting the deploy layer to other init systems or distros should be straightforward — it's a small, self-contained script (`init.d/nexus`) plus a few lines in `setup.sh`, none of which touches the build itself. Contributions for other targets (e.g. a native systemd unit, or an RHEL/openrc equivalent) are welcome.
+Adapting the deploy layer to other init systems or distros should be straightforward — it's a small, self-contained script (`service/sysv/nexus`) plus a few lines in `setup.sh`, none of which touches the build itself. Contributions for other targets (e.g. a native systemd unit, or an RHEL/openrc equivalent) are welcome.
 
 ## Quickstart
 
@@ -41,7 +41,7 @@ git clone https://github.com/scijava/nexus-core-oss /opt/nexus-core-oss
 /opt/nexus-core-oss/setup.sh
 ```
 
-This creates the `nexus` service user and data directory, clones `nexus-public` to `/opt/nexus-public`, symlinks `init.d/nexus` to `/etc/init.d/nexus`, and — since `/opt/nexus3` doesn't exist yet — builds the latest release and starts it.
+This creates the `nexus` service user and data directory, clones `nexus-public` to `/opt/nexus-public`, symlinks `service/sysv/nexus` to `/etc/init.d/nexus`, and — since `/opt/nexus3` doesn't exist yet — builds the latest release and starts it.
 
 Nexus is now running, but empty and unconfigured. See [Post-install configuration](#post-install-configuration) below.
 
@@ -63,20 +63,20 @@ To just build without deploying anything (e.g. to test the recipe still works ag
 
 ## Service management
 
-`init.d/nexus` implements its own start/stop/status logic rather than trusting Nexus Core's own launcher (which has no real service-control support beyond running in the foreground — see the script's comments) or a pidfile. Ubuntu's systemd compatibility generator means `systemctl start|stop|status nexus` also works once the symlink is in place, but there is no native `nexus.service` unit and thus no restart-on-crash policy.
+`service/sysv/nexus` implements its own start/stop/status logic rather than trusting Nexus Core's own launcher (which has no real service-control support beyond running in the foreground — see the script's comments) or a pidfile. Ubuntu's systemd compatibility generator means `systemctl start|stop|status nexus` also works once the symlink is in place, but there is no native `nexus.service` unit and thus no restart-on-crash policy.
 
 **Always go through `/etc/init.d/nexus`** (or `bin/restart.sh`, suitable for a cron-driven periodic restart) — never invoke `/opt/nexus3/bin/nexus start`/`stop` directly. An overlapping start can leave two Nexus processes fighting over the same embedded database and blob store. After starting or stopping, verify actual process state with `pgrep -af nexus-repository` (exactly one process after start, none after stop).
 
 ### Configuration
 
-Machine-specific settings (JDK location, heap size, install paths) belong in `/etc/default/nexus`, sourced by `init.d/nexus` if present — no need to edit `init.d/nexus` directly. Recognized variables, all optional:
+Machine-specific settings (JDK location, heap size, install paths) belong in `/etc/default/nexus`, sourced by `service/sysv/nexus` if present — no need to edit `service/sysv/nexus` directly. Recognized variables, all optional:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `NEXUS_HOME` | `/opt/nexus3` | Path to the active install (the symlink `bin/upgrade.sh` repoints) |
 | `NEXUS_DATA_DIR` | `/opt/sonatype-work/nexus3` | Data directory / `karaf.data` |
 | `NEXUS_USER` | `nexus` | System user the service runs as |
-| `NEXUS_JAVA_HOME` | unset (trust `PATH`) | JDK used to run Nexus. Set this if your system's default `java` is older than the current release requires — see `init.d/nexus` for why the bundled launcher can't detect a suitable JDK on its own the way Sonatype's official distributions do |
+| `NEXUS_JAVA_HOME` | unset (trust `PATH`) | JDK used to run Nexus. Set this if your system's default `java` is older than the current release requires — see `service/sysv/nexus` for why the bundled launcher can't detect a suitable JDK on its own the way Sonatype's official distributions do |
 | `NEXUS_JAVA_MIN_MEM`, `NEXUS_JAVA_MAX_MEM`, `NEXUS_DIRECT_MAX_MEM` | `2703m` each | JVM heap/direct-memory sizing — raise these on boxes with more RAM to spare |
 
 Example `/etc/default/nexus`:

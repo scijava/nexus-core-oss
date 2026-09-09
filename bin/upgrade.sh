@@ -86,8 +86,8 @@ log "Restarting Nexus..."
 
 # "nexus-repository", not "sonatype-nexus-repository": the latter doesn't
 # match Core OSS's jar name (nexus-repository-core-*.jar), only Community's
-# (sonatype-nexus-repository-*.jar) -- see init.d/nexus for the same fix
-# applied to its own process-matching, and why it matters.
+# (sonatype-nexus-repository-*.jar) -- see service/sysv/nexus for the same
+# fix applied to its own process-matching, and why it matters.
 running=$(pgrep -cf nexus-repository || true)
 if [ "$running" != "1" ]; then
   log "ERROR: expected exactly one Nexus process after restart, found $running."

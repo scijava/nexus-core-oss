@@ -41,7 +41,7 @@ test -d "$nexus_public_dir/.git" || \
   git clone https://github.com/sonatype/nexus-public "$nexus_public_dir"
 
 echo '--> Wiring up /etc/init.d/nexus'
-ln -sf "$dir/init.d/nexus" /etc/init.d/nexus
+ln -sf "$dir/service/sysv/nexus" /etc/init.d/nexus
 
 if [ -e /opt/nexus3 ]; then
   echo '--> /opt/nexus3 already exists -- skipping first-install build'

@@ -11,8 +11,8 @@
 # nexus-repository-core-*.jar for Core OSS built by this project) -- not
 # "org.sonatype.nexus", which never actually appears in either edition's
 # real command line (confirmed 2026-09-06 by checking directly against
-# the running process). See init.d/nexus for the same fix applied to its
-# own process-matching.
+# the running process). See service/sysv/nexus for the same fix applied
+# to its own process-matching.
 
 # Wait up to 1 minute for a service to start up.
 waitForStart() {
