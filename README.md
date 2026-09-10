@@ -18,6 +18,13 @@ The content of this repository is dedicated to the public domain — see [UNLICE
 
 **Trademark Notice:** Sonatype, Nexus, and Nexus Repository are trademarks of Sonatype, Inc. This repository is an independent open source project and is not affiliated with, endorsed by, sponsored by, or connected to Sonatype, Inc.
 
+## Alternatives
+
+* [Reposilite](https://reposilite.com/)
+* [kkRepo](https://github.com/klboke/kkRepo)
+* [JFrog Artifactory OSS](https://jfrog.com/community/download-artifactory-oss/)
+* [Sonatype Nexus Community Edition](https://www.sonatype.com/products/nexus-community-edition-download) (has crippleware limitations)
+
 ## Requirements
 
 Building and deploying have quite different requirements — only the deploy/service-management layer is tied to a specific OS family.
